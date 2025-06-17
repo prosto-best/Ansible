@@ -1,0 +1,49 @@
+---
+- name: Update apt and install docker, docker-compose on all host
+  hosts: all  # Замените на имя хоста или группу хостов
+  become: yes              # Используем привилегии sudo для выполнения команд
+  tasks:
+    - name: Update apt repositories
+      apt:
+        update_cache: yes    # Выполняем обновление репозиториев
+
+    - name: Install Docker
+      apt:
+        name: docker.io         # Устанавливаем Ansible
+        state: present        # Убедитесь, что пакет установлен
+    
+    - name: Install Docker-Compose
+      apt:
+        name: docker-compose         # Устанавливаем Ansible
+        state: present        # Убедитесь, что пакет установлен
+    
+    - name: Add Vagrant user
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+- name: Deploy Microservices
+  hosts: node01
+  become: yes
+  tasks:
+    - name: Copy files from source directory to destination directory 1 
+      copy:
+        src: /home/vagrant/services     # Путь к исходной директории на удаленной машине
+        dest: /home/vagrant/  # Путь к целевой директории на удаленной машине
+
+    - name: Copy files from source directory to destination directory 2
+      copy:
+        src: /home/vagrant/nginx     # Путь к исходной директории на удаленной машине
+        dest: /home/vagrant/  # Путь к целевой директории на удаленной машине
+
+    - name: Copy files from source directory to destination directory 3
+      copy:
+        src: /home/vagrant/docker-compose.yml     # Путь к исходной директории на удаленной машине
+        dest: /home/vagrant/   # Путь к целевой директории на удаленной машине
+
+    
+    - name: Docker-compose up
+      command: docker-compose up -d
+      args:
+        chdir: /home/vagrant

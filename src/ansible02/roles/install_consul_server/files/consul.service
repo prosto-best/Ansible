@@ -1,0 +1,11 @@
+[Unit]
+Description=My Consul Service
+
+[Service]
+ExecStart=/usr/local/bin/consul agent -grpc-port=8502 -config-file=/etc/consul.d/consul_server.hcl
+Restart=always
+User=root
+Group=root
+
+[Install]
+WantedBy=multi-user.target

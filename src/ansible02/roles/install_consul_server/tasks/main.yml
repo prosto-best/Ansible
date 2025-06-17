@@ -1,0 +1,61 @@
+---
+- name: Update APT package index
+  apt:
+    update_cache: yes
+  become: yes
+
+- name: Install Unzip
+  apt:
+    name: unzip
+    state: present
+  become: yes
+
+- name: Create dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0777
+  with_items:
+    - /opt/consul_data
+    - /etc/consul.d
+
+- name: Copy consul_server.hcl
+  copy:
+    src: consul_server.hcl
+    dest: /etc/consul.d/consul_server.hcl
+  become: yes
+
+- name: Copy service
+  copy:
+    src: consul.service
+    dest: /etc/systemd/system/consul.service
+  become: yes
+
+- name: Download Consul from zip
+  command: /bin/bash /vagrant/ansible02/consul_download.sh
+  become: yes
+
+- name: Started Consul service
+  systemd: 
+    name: consul
+    enabled: yes
+    state: started 
+  become: yes
+
+
+#Способы установки консул
+# 1
+# wget https://go.dev/dl/go1.23.6.linux-amd64.tar.gz
+# sudo rm -rf /usr/local/go && sudo tar -C /usr/local -xzf go1.23.6.linux-amd64.tar.gz
+# echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
+# source ~/.bashrc
+# git clone https://github.com/hashicorp/consul.git
+# cd consul
+# make dev
+
+# 2
+# apt insall unzip
+# Копирование zip ки в диру из files
+# unzip consul_1.16.6_linux_amd64.zip
+# mv consul /usr/local/bin/consul
+# rm -rf consul_1.16.6_linux_amd64.zip

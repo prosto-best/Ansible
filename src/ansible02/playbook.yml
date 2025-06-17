@@ -1,0 +1,49 @@
+---
+- name: Copy files from one directory to another on a VM
+  hosts: manager      # Замените на имя хоста или группу хостов
+  gather_facts: no
+  tasks:
+    - name: Copy files from source directory to destination directory
+      copy:
+        src: /vagrant/     # Путь к исходной директории на удаленной машине
+        dest: /home/vagrant/  # Путь к целевой директории на удаленной машине
+        # mode: '0644'               # Устанавливаем права для файлов
+        remote_src: yes            # Указывает, что исходный файл находится на удаленной машине
+
+- name: Update apt and install Ansible on manager host
+  hosts: manager  # Замените на имя хоста или группу хостов
+  become: yes              # Используем привилегии sudo для выполнения команд
+  tasks:
+    - name: Update apt repositories
+      apt:
+        update_cache: yes    # Выполняем обновление репозиториев
+
+    - name: Install Ansible
+      apt:
+        name: ansible         # Устанавливаем Ansible
+        state: present        # Убедитесь, что пакет установлен
+    
+    - name: Install Ansible ansible.cfg 
+      copy:
+        src: /vagrant/ansible02/ansible.cfg    # Путь к исходной директории на удаленной машине
+        dest: /etc/ansible/  # Путь к целевой директории на удаленной машине
+        # mode: '0644'               # Устанавливаем права для файлов
+        remote_src: yes            # Указывает, что исходный файл находится на удаленной машине
+
+    - name: Install Ansible playbook
+      copy:
+        src: /vagrant/ansible02/deploy_roles.yml
+        dest: /etc/ansible/
+        remote_src: yes
+
+    - name: Install Ansible inventory
+      copy:
+        src: /vagrant/ansible02/inventory.ini
+        dest: /etc/ansible/
+        remote_src: yes
+
+- name: Запуск другого playbook на удаленной машине
+  hosts: manager
+  tasks:
+    - name: Запустить на удаленной машине
+      command: ansible node01,node02 -m ping

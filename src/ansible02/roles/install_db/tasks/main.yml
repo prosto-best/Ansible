@@ -1,0 +1,52 @@
+---
+- name: Install PostgreSQL and dependencies
+  apt:
+    update_cache: yes 
+    name:
+      - postgresql
+      - python3-psycopg2
+      - libpq-dev
+      - python3-pip
+      - acl
+    state: present
+
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Установить пароль для пользователя postgres
+  become_user: postgres
+  postgresql_user:
+    name: postgres
+    password: "postgres"
+    state: present
+
+- name: Ensure listen_addresses is set to '*'
+  lineinfile:
+    path: "/etc/postgresql/12/main/postgresql.conf"
+    regexp: "^#?listen_addresses"
+    line: "listen_addresses = '*'"
+    state: present
+
+- name: "Allow md5 connection for the db user from all hosts"
+  postgresql_pg_hba:
+    dest: "/etc/postgresql/12/main/pg_hba.conf"
+    contype: host
+    databases: all
+    method: md5
+    users: "postgres"
+    address: "0.0.0.0/0"
+    create: true
+  become: yes
+  become_user: postgres
+  notify: restart postgresql
+
+- name: Ensure database is created
+  become_method: sudo
+  become_user: postgres
+  postgresql_db:
+    name: hotels_db
+    owner: postgres
+    state: present

@@ -1,0 +1,60 @@
+---
+- name: Copy Hotel Service
+  become: true
+  copy:
+    src: services/hotel-service
+    dest: /opt/
+
+- name: Install openjdk-8-jdk and maven
+  become: true
+  apt:
+    name:
+      - openjdk-8-jdk
+      - maven
+    update_cache: yes 
+    state: present
+
+- name: "Maven install depencies"
+  become: true
+  args:
+    chdir: /opt/hotel-service
+  command: mvn -f /opt/hotel-service/pom.xml dependency:go-offline
+
+- name: mvn -B package -DskipTests
+  become: true
+  args:
+    chdir: /opt/hotel-service
+  command: mvn -B package -DskipTests
+
+- name: Set environment variables
+  lineinfile:
+    path: /etc/environment
+    line: "{{ item }}"
+    create: yes
+  with_items:
+    - "POSTGRES_HOST=127.0.0.1"
+    - "POSTGRES_PORT=5432"
+    - "POSTGRES_DB=hotels_db"
+    - "POSTGRES_USER=postgres"
+    - "POSTGRES_PASSWORD=postgres"
+  become: yes
+
+- name: Ensure environment variables are loaded
+  shell: "source /etc/environment && export $(cat /etc/environment | xargs)"
+  args:
+    executable: /bin/bash
+  become: yes
+
+- name: Environment
+  become: true
+  args:
+    chdir: /opt/hotel-service
+  environment:
+    POSTGRES_HOST: "127.0.0.1"
+    POSTGRES_PORT: 5432
+    POSTGRES_DB: "hotels_db"
+    POSTGRES_USER: "postgres"
+    POSTGRES_PASSWORD: "postgres"
+  shell: nohup java -jar ./target/hotel-service-0.0.1-SNAPSHOT.jar > /dev/null 2>&1 &
+  async: 1
+  poll: 0

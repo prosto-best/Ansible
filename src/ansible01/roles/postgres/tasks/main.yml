@@ -1,0 +1,38 @@
+---
+- name: Install PostgreSQL and dependencies
+  apt:
+    update_cache: yes 
+    name:
+      - postgresql
+      - python3-psycopg2
+      - libpq-dev
+      - python3-pip
+      - acl
+    state: present
+
+- name: Start PostgreSQL
+  service:
+    name: postgresql
+    state: started
+    enabled: yes
+
+- name: Ensure database is created
+  become_method: sudo
+  become_user: postgres
+  postgresql_db:
+    name: mydb
+    state: present
+
+- name: Создание таблицы
+  become_user: postgres
+  postgresql_query:
+    db: mydb
+    query: "CREATE TABLE users (id SERIAL PRIMARY KEY, name VARCHAR(100), age INT);"
+  become: yes
+
+- name: Вставка данных в таблицу
+  become_user: postgres
+  postgresql_query:
+    db: mydb
+    query: "INSERT INTO users (name, age) VALUES ('Alice', 30), ('Bob', 25), ('Charlie', 35);"
+  become: yes

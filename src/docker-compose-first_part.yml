@@ -1,0 +1,134 @@
+version: "3.7"
+services:
+  postgres:
+    build: "./services/database"
+    container_name: postgres
+    env_file:
+      - ./services/database/database.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - 5432:5432
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U postgres -d postgres
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: always
+    networks:
+      - my_service
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - 5672:5672
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 10s
+      retries: 3
+    networks:
+      - my_service
+
+  booking:
+    build: "./services/booking-service"
+    container_name: booking
+    env_file:
+      - ./services/booking-service/booking.env
+    networks:
+      - my_service
+    depends_on:
+      - rabbitmq
+      - postgres
+
+  gateway:
+    build: "./services/gateway-service"
+    container_name: gateway
+    env_file:
+      - ./services/gateway-service/gateway.env
+    ports:
+      - 8087:8087
+    networks:
+      - my_service
+    depends_on:
+      - rabbitmq
+      - postgres
+
+  hotel:
+    build: ./services/hotel-service
+    container_name: hotel
+    env_file:
+      - ./services/hotel-service/hotel.env
+    networks:
+      - my_service
+    depends_on:
+      - rabbitmq
+      - postgres
+  
+  loyalty:
+    build: ./services/loyalty-service
+    container_name: loyalty
+    env_file:
+      - ./services/loyalty-service/loyalty.env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - my_service
+  
+  payment:
+    build: ./services/payment-service
+    container_name: payment
+    env_file:
+      - ./services/payment-service/payment.env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - my_service
+  
+  report:
+    build: ./services/report-service
+    container_name: report
+    env_file:
+      - ./services/report-service/report.env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - my_service
+  
+  session:
+    build: ./services/session-service
+    container_name: session
+    ports:
+      - 8081:8081
+    env_file:
+      - ./services/report-service/report.env
+    depends_on:
+      - rabbitmq
+      - postgres
+    networks:
+      - my_service
+
+  #nginx:
+  #  image: nginx:latest
+  #  container_name: nginx
+  #  volumes:
+  #    - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+  #  ports:
+  #    - 8081:8081
+  #    - 8087:8087
+  #  networks:
+  #    - my_service
+
+volumes:
+  postgres_data: null
+
+networks:
+  my_service:
+    driver: bridge

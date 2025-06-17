@@ -1,0 +1,48 @@
+{% if inventory_hostname == 'api' %}
+{
+    "service": {
+        "name": "api",
+        "port": 8082,
+        "tags": [
+            "java",
+            "service"
+        ],
+        "connect": { "sidecar_service": {
+                "proxy": {
+                    "upstreams": [
+                        {
+                            "destination_name": "db",
+                            "local_bind_port": 5432
+                        }
+                    ]
+                } 
+            }
+        },
+        "check": {
+            "id": "hotels-api-check",
+            "name": "Hotels service tcp check",
+            "tcp": "localhost:8082",
+            "interval": "10s",
+            "timeout": "5s"
+        }
+    }
+}
+{% elif inventory_hostname == 'db' %}
+{
+    "service": {
+      "name": "db",
+      "port": 5432,
+          "connect": { "sidecar_service": {
+                  "proxy": {
+                      "upstreams": [
+                          {
+                              "destination_name": "api",
+                              "local_bind_port": 8082
+                          }
+                      ]
+                  } 
+              }
+          }
+    }
+  }
+{% endif %}

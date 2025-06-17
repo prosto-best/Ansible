@@ -1,0 +1,14 @@
+---
+- name: Установка Apache
+  apt:
+    update_cache: yes 
+    name: apache2
+    state: present
+  become: yes
+
+- name: Запуск Apache
+  service:
+    name: apache2
+    state: started
+    enabled: yes
+  become: yes

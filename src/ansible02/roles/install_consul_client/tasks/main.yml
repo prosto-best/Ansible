@@ -1,0 +1,62 @@
+---
+- name: Update APT package index
+  apt:
+    update_cache: yes
+  become: yes
+      
+- name: Install Consul
+  apt:
+    name: unzip
+    state: present
+  become: yes
+
+- name: Download Envoy binary
+  command: /bin/bash /vagrant/ansible02/envoy_download.sh
+  become: yes
+
+- name: Create dirs
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: 0777
+  with_items:
+    - /opt/consul_data
+    - /etc/consul.d
+
+- name: Copy consul_client.hcl
+  template:
+    src: consul_client.j2
+    dest: /etc/consul.d/consul_client.hcl
+  become: yes
+
+- name: Copy service
+  become: true
+  copy:
+    src: consul.service
+    dest: /etc/systemd/system/consul.service
+
+- name: Download Consul from zip
+  command: /bin/bash /vagrant/ansible02/consul_download.sh
+  become: yes
+
+- name: Started Consul service
+  systemd: 
+    name: consul
+    enabled: yes
+    state: started 
+  become: yes
+
+- name: copy Envoy
+  become: true
+  template:
+    src: "envoy.j2"
+    dest: "/envoy.json"
+    mode: '0644'
+
+- name: "register envoy service"
+  become: true
+  command: consul services register /envoy.json
+
+- name: "Connect envoy"
+  become: true
+  shell: "nohup consul connect envoy -sidecar-for '{{ inventory_hostname }}' &"

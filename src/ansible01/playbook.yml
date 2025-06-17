@@ -1,0 +1,93 @@
+---
+- name: Execute SSH command and check success
+  hosts: manager
+  gather_facts: no
+  tasks:
+    - name: Run SSH command to check connectivity or any other task
+      command: ssh -i /vagrant/.vagrant/machines/node01/virtualbox/private_key -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=5 vagrant@192.168.14.15 echo "c"
+      register: ssh_command_result
+      ignore_errors: yes
+
+    - name: Check if the command was successful
+      debug:
+        msg: "Connect to Node01 From Manger was successfull!"
+      when: ssh_command_result.rc == 0
+
+    - name: Fail if the command was not successful
+      debug:
+        msg: "Connect to Node01 From Manger was failed!"
+      when: ssh_command_result.rc != 0
+
+- name: Generate ssh - keys to node01 from manager
+  hosts: manager
+  gather_facts: no
+  tasks:
+    - name: Generate SSH key pair
+      openssh_keypair:
+        path: "/home/vagrant/.ssh/id_rsa"  # Путь, где сохраняются ключи
+        type: rsa                    # Тип ключа (можно выбрать rsa, dsa, ecdsa и т.д.)
+        size: 2048                   # Размер ключа (например, 2048 бит)
+        force: yes                   # Перезаписать ключ, если уже существует
+    
+    - name: Fetch public key from source machine
+      fetch:
+        src: "/home/vagrant/.ssh/id_rsa.pub"  # Путь к публичному ключу на исходной машине
+        dest: "/tmp/id_rsa.pub"            # Временный путь для хранения ключа на локальной машине
+        flat: yes
+
+- name: "Copy to authorized_key on node01"
+  hosts: node01
+  tasks:
+    - name: Add public key to authorized_keys on the remote server
+      authorized_key:
+        user: vagrant
+        state: present
+        key: "{{ lookup('file', '/tmp/id_rsa.pub') }}"
+
+- name: Copy files from one directory to another on a VM
+  hosts: manager      # Замените на имя хоста или группу хостов
+  gather_facts: no
+  tasks:
+    - name: Copy files from source directory to destination directory
+      copy:
+        src: /vagrant/     # Путь к исходной директории на удаленной машине
+        dest: /home/vagrant/  # Путь к целевой директории на удаленной машине
+        remote_src: yes            # Указывает, что исходный файл находится на удаленной машине
+
+- name: Update apt and install Ansible on manager host
+  hosts: manager  # Замените на имя хоста или группу хостов
+  become: yes              # Используем привилегии sudo для выполнения команд
+  tasks:
+    - name: Update apt repositories
+      apt:
+        update_cache: yes    # Выполняем обновление репозиториев
+
+    - name: Install Ansible
+      apt:
+        name: ansible         # Устанавливаем Ansible
+        state: present        # Убедитесь, что пакет установлен
+    
+    - name: Install Ansible ansible.cfg 
+      copy:
+        src: /vagrant/ansible01/ansible.cfg    # Путь к исходной директории на удаленной машине
+        dest: /etc/ansible/  # Путь к целевой директории на удаленной машине
+        # mode: '0644'               # Устанавливаем права для файлов
+        remote_src: yes            # Указывает, что исходный файл находится на удаленной машине
+
+    - name: Install Ansible playbook
+      copy:
+        src: /vagrant/ansible01/playbook_1.yml
+        dest: /etc/ansible/
+        remote_src: yes
+
+    - name: Install Ansible inventory
+      copy:
+        src: /vagrant/ansible01/inventory.ini
+        dest: /etc/ansible/
+        remote_src: yes
+
+- name: Запуск другого playbook на удаленной машине
+  hosts: manager
+  tasks:
+    - name: Запустить playbook_2 на удаленной машине
+      command: ansible node01,node02 -m ping

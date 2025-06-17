@@ -1,0 +1,10 @@
+server = false
+{% if inventory_hostname == 'api' %}
+advertise_addr = "192.168.14.15"
+node_name = "api"
+{% elif inventory_hostname == 'db' %}
+advertise_addr = "192.168.14.17"
+node_name = "db"
+{% endif %}
+data_dir = "/opt/consul_data"
+retry_join = ["192.168.14.16"]
